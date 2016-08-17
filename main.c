@@ -6,7 +6,7 @@
 //#include <util/atomic.h>
 
 #include "uart.h"
-#include "twiddle.h"
+#include "alpha_rx_commands.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -42,21 +42,12 @@ static FILE uart0_stream = FDEV_SETUP_STREAM(
         _FDEV_SETUP_RW);
 
 
-void get_status_command();
-
 enum {
  BLINK_DELAY_MS = 1000,
 };
 
 
-uint8_t spi_send_receive(uint8_t data) {
-    // transmit the byte to be sent
-    SPDR = data;
-    // wait for the transfer to complete
-    while (!(SPSR & (1<<SPIF)));
-    // then return the byte the slave just returned
-    return SPDR;
-}
+
 
 
 #pragma clang diagnostic push
@@ -85,12 +76,8 @@ int main (void)
 
     /* Enable SPI, Master, MSB first, set clock rate fck/64 */
     SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1);
-
-    // Send Read Configuration register
-
-
-
     _delay_ms(100);
+    alpha_tx_configuration_setting_command(BAND_433_MHz, false, false, true, XTAL_LOAD_CAP_12p0, BASEBAND_BANDWIDTH_200kHz, true);
 
     while (1) {
         /* set pin 20 low to turn led on */
@@ -109,23 +96,9 @@ int main (void)
         PORTB |= _BV(PORTB1);
         _delay_ms(BLINK_DELAY_MS);
 
-        get_status_command();
+        alpha_tx_get_status_command();
         printf("Hello, World! at rate %d\n", uart0_get_baud_rate());
     }
-}
-
-void get_status_command() {
-    static const uint8_t GET_STATUS_COMMAND_HI = 0x00;
-    static const uint8_t GET_STATUS_COMMAND_LO = 0x00;
-    CLR(PORTB, DDB5);
-    _delay_us(5.0);
-    uint8_t status_hi = spi_send_receive(GET_STATUS_COMMAND_HI);
-    _delay_us(7.0);
-    uint8_t status_lo = spi_send_receive(GET_STATUS_COMMAND_LO);
-    _delay_us(5.0);
-    SET(PORTB, DDB5);
-
-    printf("(0x%04X 0x%04X)\n", status_hi, status_lo);
 }
 
 #pragma clang diagnostic pop

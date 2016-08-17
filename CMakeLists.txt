@@ -152,6 +152,8 @@ add_avr_executable(
         rx200r
         main.c
         uart.c
+        alpha_rx_commands.c
+        spi.c
 )
 
 # find_library(M_LIB m)
