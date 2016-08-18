@@ -83,6 +83,12 @@ int main (void)
     printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
 
+    alpha_rx_receiver_setting_command(
+            VDI_DRSS_AND_DATA_QUALITY_DETECTOR,
+            LNA_GAIN_0_DBM,
+            DRSSI_MINUS_79_DBM,
+            RECEIVER_ENABLE);
+
     while (1) {
         /* set pin 20 low to turn led on */
         PORTB &= ~_BV(PORTB0);

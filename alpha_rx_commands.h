@@ -59,4 +59,41 @@ uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency);
 
 void alpha_rx_frequency_setting_command(uint16_t f);
 
+enum VdiSource {
+    VDI_DRSSI = 0,
+    VDI_DATA_QUALITY_DETECTOR = 1,
+    VDI_CLOCK_RECOVERY_LOCK_OUTPUT = 2,
+    VDI_DRSS_AND_DATA_QUALITY_DETECTOR = 3
+};
+
+enum LnaGain {
+    LNA_GAIN_0_DBM = 0,
+    LNA_GAIN_MINUS_14_DBM = 1,
+    LNA_GAIN_MINUS_6_DBM = 2,
+    LNA_GAIN_MINUS_20_DBM = 3
+};
+
+enum DrssiTheshold {
+    DRSSI_MINUS_103_DBM = 0,
+    DRSSI_MINUS_97_DBM = 1,
+    DRSSI_MINUS_91_DBM = 2,
+    DRSSI_MINUS_85_DBM = 3,
+    DRSSI_MINUS_79_DBM = 4,
+    DRSSI_MINUS_73_DBM = 5,
+    DRSSI_MINUS_67_DBM = 6,
+    DRSSI_MINUS_61_DBM = 7
+};
+
+enum ReceiverState {
+    RECEIVER_DISABLE = 0,
+    RECEIVER_ENABLE = 1
+};
+
+void alpha_rx_receiver_setting_command(
+        enum VdiSource vdi_source,
+        enum LnaGain lna_gain,
+        enum DrssiTheshold drssi_threshold,
+        enum ReceiverState receiver_state
+);
+
 #endif //RX200R_ALPHA_RX_COMMANDS_H

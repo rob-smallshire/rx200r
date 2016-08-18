@@ -92,3 +92,23 @@ void alpha_rx_frequency_setting_command(uint16_t f) {
     _delay_us(5.0);
     SET(PORTB, DDB5);
 }
+
+void alpha_rx_receiver_setting_command(
+        enum VdiSource vdi_source,
+        enum LnaGain lna_gain,
+        enum DrssiTheshold drssi_threshold,
+        enum ReceiverState receiver_state
+) {
+    static const uint8_t RECEIVER_SETTING_COMMAND_HI = 0xC0;
+    uint8_t lo = (((uint8_t)vdi_source) << 6)
+                 | (((uint8_t)lna_gain) << 4)
+                 | (((uint8_t)drssi_threshold) << 1)
+                 | (((uint8_t)receiver_state));
+    CLR(PORTB, DDB5);
+    _delay_us(5.0);
+    spi_send(RECEIVER_SETTING_COMMAND_HI);
+    _delay_us(7.0);
+    spi_send(lo);
+    _delay_us(5.0);
+    SET(PORTB, DDB5);
+}
