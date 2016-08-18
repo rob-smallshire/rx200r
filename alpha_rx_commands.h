@@ -53,4 +53,10 @@ void alpha_tx_configuration_setting_command(
         enum BasebandBandwidth baseband_bandwidth,
         bool disable_clock_output);
 
+static const int ALPHA_RX_CLOCK_MHZ = 10;
+
+uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency);
+
+void alpha_rx_frequency_setting_command(uint16_t f);
+
 #endif //RX200R_ALPHA_RX_COMMANDS_H

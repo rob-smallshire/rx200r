@@ -79,6 +79,10 @@ int main (void)
     _delay_ms(100);
     alpha_tx_configuration_setting_command(BAND_433_MHz, false, false, true, XTAL_LOAD_CAP_12p0, BASEBAND_BANDWIDTH_200kHz, true);
 
+    uint16_t f = alpha_rx_frequency_to_f(BAND_433_MHz, 434.2f);
+    printf("f = %hu\n", f);
+    alpha_rx_frequency_setting_command(f);
+
     while (1) {
         /* set pin 20 low to turn led on */
         PORTB &= ~_BV(PORTB0);

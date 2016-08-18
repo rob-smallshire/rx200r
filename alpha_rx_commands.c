@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
 
 #include <avr/io.h>
 
@@ -43,6 +44,46 @@ void alpha_tx_configuration_setting_command(
     unsigned int lo = ((unsigned int)crystal_load_capacitor << 4)
                  | ((unsigned int)baseband_bandwidth << 1)
                  | (disable_clock_output);
+    CLR(PORTB, DDB5);
+    _delay_us(5.0);
+    spi_send(hi);
+    _delay_us(7.0);
+    spi_send(lo);
+    _delay_us(5.0);
+    SET(PORTB, DDB5);
+}
+
+uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency) {
+    int c1 = 0;
+    int c2 = 0;
+    switch (band) {
+        case BAND_315_MHz:
+            c1 = 1;
+            c2 = 31;
+            break;
+        case BAND_433_MHz:
+            c1 = 1;
+            c2 = 43;
+            break;
+        case BAND_868_MHz:
+            c1 = 2;
+            c2 = 43;
+            break;
+        case BAND_915_MHz:
+            // check! Values missing from Alpha TX datasheet
+            // error
+            break;
+    }
+    return (uint16_t) ((((frequency / (ALPHA_RX_CLOCK_MHZ * c1)) - c2) * 4000) + 0.5);
+}
+
+void alpha_rx_frequency_setting_command(uint16_t f) {
+    if (f < 96 || f > 3903) {
+        return;
+    }
+    static const unsigned int FREQUENCY_COMMAND_HI = 0xa0;
+    uint8_t hi = (uint8_t) ((f >> 8) & 0x0f) | FREQUENCY_COMMAND_HI;
+    uint8_t lo = (uint8_t) (f & 0xff);
     CLR(PORTB, DDB5);
     _delay_us(5.0);
     spi_send(hi);
