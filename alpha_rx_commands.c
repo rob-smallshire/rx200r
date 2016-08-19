@@ -18,14 +18,7 @@
 uint16_t alpha_tx_get_status_command() {
     static const unsigned int GET_STATUS_COMMAND_HI = 0x00;
     static const unsigned int GET_STATUS_COMMAND_LO = 0x00;
-    CLR(PORTB, DDB5);
-    _delay_us(5.0);
-    unsigned int status_hi = spi_send_receive(GET_STATUS_COMMAND_HI);
-    _delay_us(7.0);
-    unsigned int status_lo = spi_send_receive(GET_STATUS_COMMAND_LO);
-    _delay_us(5.0);
-    SET(PORTB, DDB5);
-    return status_hi << 8 | status_lo;
+    return spi_send_receive_2(GET_STATUS_COMMAND_HI, GET_STATUS_COMMAND_LO);
 }
 
 void alpha_tx_configuration_setting_command(
@@ -44,13 +37,7 @@ void alpha_tx_configuration_setting_command(
     unsigned int lo = ((unsigned int)crystal_load_capacitor << 4)
                  | ((unsigned int)baseband_bandwidth << 1)
                  | (disable_clock_output);
-    CLR(PORTB, DDB5);
-    _delay_us(5.0);
-    spi_send(hi);
-    _delay_us(7.0);
-    spi_send(lo);
-    _delay_us(5.0);
-    SET(PORTB, DDB5);
+    spi_send_2(hi, lo);
 }
 
 uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency) {
@@ -84,13 +71,7 @@ void alpha_rx_frequency_setting_command(uint16_t f) {
     static const unsigned int FREQUENCY_COMMAND_HI = 0xa0;
     uint8_t hi = (uint8_t) ((f >> 8) & 0x0f) | FREQUENCY_COMMAND_HI;
     uint8_t lo = (uint8_t) (f & 0xff);
-    CLR(PORTB, DDB5);
-    _delay_us(5.0);
-    spi_send(hi);
-    _delay_us(7.0);
-    spi_send(lo);
-    _delay_us(5.0);
-    SET(PORTB, DDB5);
+    spi_send_2(hi, lo);
 }
 
 void alpha_rx_receiver_setting_command(
@@ -99,16 +80,22 @@ void alpha_rx_receiver_setting_command(
         enum DrssiTheshold drssi_threshold,
         enum ReceiverState receiver_state
 ) {
-    static const uint8_t RECEIVER_SETTING_COMMAND_HI = 0xC0;
+    static const uint8_t RECEIVER_SETTING_COMMAND_HI = 0xc0;
     uint8_t lo = (((uint8_t)vdi_source) << 6)
                  | (((uint8_t)lna_gain) << 4)
                  | (((uint8_t)drssi_threshold) << 1)
                  | (((uint8_t)receiver_state));
-    CLR(PORTB, DDB5);
-    _delay_us(5.0);
-    spi_send(RECEIVER_SETTING_COMMAND_HI);
-    _delay_us(7.0);
-    spi_send(lo);
-    _delay_us(5.0);
-    SET(PORTB, DDB5);
+    spi_send_2(RECEIVER_SETTING_COMMAND_HI, lo);
+}
+
+uint8_t alpha_rx_data_rate_to_cs_r(float data_rate) {
+    uint8_t cs = 0; // cs can be either 0 or 1 - should really be a parameter or a loop to find best
+    uint8_t r = (uint8_t) (((10e6 / 29 / (1 + cs*7)/data_rate) - 1) + 0.5);
+    uint8_t cs_r = r | (cs << 7);
+    return cs_r;
+}
+
+void alpha_rx_data_rate_command(uint8_t cs_r) {
+    static const uint8_t DATA_RATE_COMMAND_HI = 0xc8;
+    spi_send_2(DATA_RATE_COMMAND_HI, cs_r);
 }

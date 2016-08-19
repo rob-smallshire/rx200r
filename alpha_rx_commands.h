@@ -96,4 +96,8 @@ void alpha_rx_receiver_setting_command(
         enum ReceiverState receiver_state
 );
 
+uint8_t alpha_rx_data_rate_to_cs_r(float data_rate);
+
+void alpha_rx_data_rate_command(uint8_t cs_r);
+
 #endif //RX200R_ALPHA_RX_COMMANDS_H
