@@ -95,6 +95,9 @@ int main (void)
     uint8_t cs_r = alpha_rx_data_rate_to_cs_r(34482.75862068966);
     printf("cs_r = %hu\n", cs_r);
     alpha_rx_data_rate_command(cs_r);
+    _delay_us(7.0);
+    alpha_rx_output_and_fifo_command(1, FIFO_START_FILL_ON_SYNC_WORD, true, true);
+
 
     while (1) {
         /* set pin 20 low to turn led on */
@@ -113,7 +116,7 @@ int main (void)
         PORTB |= _BV(PORTB1);
         _delay_ms(BLINK_DELAY_MS);
 
-        alpha_tx_get_status_command();
+        alpha_rx_get_status_command();
         printf("Hello, World! at rate %d\n", uart0_get_baud_rate());
     }
 }

@@ -42,7 +42,7 @@ enum BasebandBandwidth {
     BASEBAND_BANDWIDTH_67kHz = 6
 };
 
-uint16_t alpha_tx_get_status_command();
+uint16_t alpha_rx_get_status_command();
 
 void alpha_tx_configuration_setting_command(
         enum Band band,
@@ -99,5 +99,17 @@ void alpha_rx_receiver_setting_command(
 uint8_t alpha_rx_data_rate_to_cs_r(float data_rate);
 
 void alpha_rx_data_rate_command(uint8_t cs_r);
+
+enum FifoStartFillCondition {
+    FIFO_START_FILL_ON_VALID_DATA_INDICATOR = 0,
+    FIFO_START_FILL_ON_SYNC_WORD = 1,
+    FIFO_START_FILL_ALWAYS = 3
+};
+
+void alpha_rx_output_and_fifo_command(
+        uint8_t fifo_interrupt_level,
+        enum FifoStartFillCondition fifo_start_fill_condition,
+        bool fill_after_synchron_word,
+        bool enable_16_bit_fifo_mode);
 
 #endif //RX200R_ALPHA_RX_COMMANDS_H

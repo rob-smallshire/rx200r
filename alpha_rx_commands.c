@@ -15,7 +15,7 @@
 
 #include "alpha_rx_commands.h"
 
-uint16_t alpha_tx_get_status_command() {
+uint16_t alpha_rx_get_status_command() {
     static const unsigned int GET_STATUS_COMMAND_HI = 0x00;
     static const unsigned int GET_STATUS_COMMAND_LO = 0x00;
     return spi_send_receive_2(GET_STATUS_COMMAND_HI, GET_STATUS_COMMAND_LO);
@@ -98,4 +98,17 @@ uint8_t alpha_rx_data_rate_to_cs_r(float data_rate) {
 void alpha_rx_data_rate_command(uint8_t cs_r) {
     static const uint8_t DATA_RATE_COMMAND_HI = 0xc8;
     spi_send_2(DATA_RATE_COMMAND_HI, cs_r);
+}
+
+void alpha_rx_output_and_fifo_command(
+        uint8_t fifo_interrupt_level,
+        enum FifoStartFillCondition fifo_start_fill_condition,
+        bool fill_after_synchron_word,
+        bool enable_16_bit_fifo_mode) {
+    static const uint8_t FIFO_COMMAND_HI = 0xce;
+    uint8_t lo = fifo_interrupt_level << 4
+               | (((uint8_t)fifo_start_fill_condition) << 2)
+               | (((uint8_t)fill_after_synchron_word) << 1)
+               | (((uint8_t)enable_16_bit_fifo_mode));
+    spi_send_2(FIFO_COMMAND_HI, lo);
 }
