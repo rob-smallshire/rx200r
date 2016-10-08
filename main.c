@@ -261,6 +261,14 @@ int main (void)
 
     int index = 0;
 
+    while (1) {
+        green_led_on();
+        _delay_ms(1000);
+        green_led_off();
+        red_led_on();
+        _delay_ms(1000);
+        red_led_off();
+    }
 
     while (1) {
         //if (!test_nirq_interrupt()) {
