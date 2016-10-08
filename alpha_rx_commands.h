@@ -44,7 +44,7 @@ enum BasebandBandwidth {
 
 uint16_t alpha_rx_get_status_command();
 
-void alpha_tx_configuration_setting_command(
+void alpha_rx_configuration_setting_command(
         enum Band band,
         bool enable_low_battery_detection,
         bool enable_wake_up_timer,
@@ -96,13 +96,90 @@ void alpha_rx_receiver_setting_command(
         enum ReceiverState receiver_state
 );
 
+enum AfcAutoMode {
+    AFC_AUTO_MODE_CONTROLLED_BY_MCU = 0,
+    AFC_AUTO_MODE_RUN_ONCE_AT_POWER_ON = 1,
+    AFC_AUTO_MODE_KEEP_OFFSET_WHEN_VDI_HI = 2,
+    AFC_AUTO_MODE_KEEPS_INDEPENDENTLY_FROM_VDI = 3
+};
+
+enum AfcRangeLimit {
+    AFC_RANGE_LIMIT_NO_RESTRICTION = 0,
+    AFC_RANGE_LIMIT_PLUS_15_MINUS_16 = 1,
+    AFC_RANGE_LIMIT_PLUS_7_MINUS_8 = 2,
+    AFC_RANGE_LIMIT_PLUS_3_MINUS_4 = 3
+};
+
+enum AfcStoreOffset {
+    AFC_DISABLE_STORE_OFFSET = 0,
+    AFC_ST_GOES_HI_WILL_STORE_OFFSET = 1
+};
+
+enum AfcAccuracy {
+    AFC_HI_ACCURACY_DISABLE = 0,
+    AFC_HI_ACCURACY_ENABLE = 1,
+};
+
+enum AfcOutputRegister {
+    AFC_OUTPUT_REGISTER_DISABLE = 0,
+    AFC_OUTPUT_REGISTER_ENABLE = 1
+};
+
+enum AfcEnable {
+    AFC_DISABLE = 0,
+    AFC_ENABLE = 1
+};
+
+void alpha_rx_afc_command(
+        enum AfcAutoMode afc_auto_mode,
+        enum AfcRangeLimit afc_range_limit,
+        enum AfcStoreOffset afc_store_offset,
+        enum AfcAccuracy afc_hi_accuracy,
+        enum AfcOutputRegister afc_output_register,
+        enum AfcEnable afc_enable);
+
 uint8_t alpha_rx_data_rate_to_cs_r(float data_rate);
 
 void alpha_rx_data_rate_command(uint8_t cs_r);
 
+enum ClockRecoveryAutoLock {
+    CLOCK_RECOVERY_MANUAL = 0,
+    CLOCK_RECOVERY_AUTO_LOCK = 1
+};
+
+enum ClockRecoveryMode {
+    CLOCK_RECOVERY_SLOW_MODE = 0,
+    CLOCK_RECOVERY_FAST_MODE = 1
+};
+
+enum FilterType {
+    DATA_FILTER_OOK = 0,
+    DATA_FILTER_DIGITAL = 1,
+    DATA_FILTER_RESERVED = 2
+};
+
+enum DqdThreshold {
+    DQD_0 = 0,
+    DQD_1 = 1,
+    DQD_2 = 2,
+    DQD_3 = 3,
+    DQD_4 = 4,
+    DQD_5 = 5,
+    DQD_6 = 6,
+    DQD_7 = 7
+};
+
+void alpha_rx_data_filter_command(
+  enum ClockRecoveryAutoLock clock_recovery_auto_lock,
+  enum ClockRecoveryMode clock_recovery_mode,
+  enum FilterType filter_type,
+  enum DqdThreshold dqd_threshold
+);
+
 enum FifoStartFillCondition {
     FIFO_START_FILL_ON_VALID_DATA_INDICATOR = 0,
     FIFO_START_FILL_ON_SYNC_WORD = 1,
+    FIFO_START_FILL_ON_VALID_DATA_INDICATOR_AND_SYNC_WORD = 2,
     FIFO_START_FILL_ALWAYS = 3
 };
 
@@ -111,5 +188,11 @@ void alpha_rx_output_and_fifo_command(
         enum FifoStartFillCondition fifo_start_fill_condition,
         bool fill_after_synchron_word,
         bool enable_16_bit_fifo_mode);
+
+void alpha_rx_reset_fifo_command(
+        uint8_t fifo_interrupt_level,
+        enum FifoStartFillCondition fifo_start_fill_condition);
+
+void alpha_rx_reset();
 
 #endif //RX200R_ALPHA_RX_COMMANDS_H
