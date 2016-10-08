@@ -146,6 +146,13 @@ int main (void)
     green_led_off();
     red_led_off();
 
+    while (1) {
+        green_led_on();
+        _delay_ms(1000);
+        green_led_off();
+        _delay_ms(1000);
+    }
+
 
     deselect_fifo();
     SET(PORTC, PORTC3); // Pull-up on nIRQ
