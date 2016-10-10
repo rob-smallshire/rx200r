@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdio.h>
 
 #include <avr/io.h>
 
@@ -16,9 +17,12 @@
 #include "alpha_rx_commands.h"
 
 uint16_t alpha_rx_get_status_command() {
+    //printf("alpha_rx_get_status_command()\n");
     static const unsigned int GET_STATUS_COMMAND_HI = 0x00;
     static const unsigned int GET_STATUS_COMMAND_LO = 0x00;
-    return spi_send_receive_2(GET_STATUS_COMMAND_HI, GET_STATUS_COMMAND_LO);
+    uint16_t result = spi_send_receive_2(GET_STATUS_COMMAND_HI, GET_STATUS_COMMAND_LO);
+    _delay_us(7.0);
+    return result;
 }
 
 void alpha_rx_configuration_setting_command(
@@ -29,6 +33,9 @@ void alpha_rx_configuration_setting_command(
         enum CrystalLoadCapacitor crystal_load_capacitor,
         enum BasebandBandwidth baseband_bandwidth,
         bool disable_clock_output) {
+    //printf("alpha_rx_configuration_setting_command(%d, %d, %d, %d, %d, %d, %d)\n",
+    //    band, enable_low_battery_detection, enable_wake_up_timer, enable_crystal_oscillator,
+    //    crystal_load_capacitor, baseband_bandwidth, disable_clock_output);
     uint8_t hi = 0x80
                  | (((uint8_t)band) << 3)
                  | (((uint8_t)enable_low_battery_detection) << 2)
@@ -38,6 +45,7 @@ void alpha_rx_configuration_setting_command(
                  | (((uint8_t)baseband_bandwidth) << 1)
                  | ((uint8_t)disable_clock_output);
     spi_send_2(hi, lo);
+    _delay_us(7.0);
 }
 
 uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency) {
@@ -65,6 +73,7 @@ uint16_t alpha_rx_frequency_to_f(enum Band band, float frequency) {
 }
 
 void alpha_rx_frequency_setting_command(uint16_t f) {
+    printf("alpha_rx_frequency_setting_command(%" PRIu16 ")\n", f);
     if (f < 96 || f > 3903) {
         return;
     }
@@ -72,6 +81,7 @@ void alpha_rx_frequency_setting_command(uint16_t f) {
     uint8_t hi = ((uint8_t) ((f >> 8) & 0x0f)) | FREQUENCY_COMMAND_HI;
     uint8_t lo = (uint8_t) (f & 0xff);
     spi_send_2(hi, lo);
+    _delay_us(7.0);
 }
 
 void alpha_rx_receiver_setting_command(
@@ -80,12 +90,14 @@ void alpha_rx_receiver_setting_command(
         enum DrssiTheshold drssi_threshold,
         enum ReceiverState receiver_state
 ) {
+    //printf("alpha_rx_receiver_setting_command(%d, %d, %d, %d)\n", vdi_source, lna_gain, drssi_threshold, receiver_state);
     static const uint8_t RECEIVER_SETTING_COMMAND_HI = 0xc0;
     uint8_t lo = (((uint8_t)vdi_source) << 6)
                  | (((uint8_t)lna_gain) << 4)
                  | (((uint8_t)drssi_threshold) << 1)
                  | (((uint8_t)receiver_state));
     spi_send_2(RECEIVER_SETTING_COMMAND_HI, lo);
+    _delay_us(7.0);
 }
 
 uint8_t alpha_rx_data_rate_to_cs_r(float data_rate) {
@@ -102,6 +114,8 @@ void alpha_rx_afc_command(
         enum AfcAccuracy afc_hi_accuracy,
         enum AfcOutputRegister afc_output_register,
         enum AfcEnable afc_enable) {
+    printf("alpha_rx_afc_command(%d, %d, %d, %d, %d, %d)\n",
+           afc_auto_mode, afc_range_limit, afc_store_offset, afc_hi_accuracy, afc_output_register, afc_enable);
     static const uint8_t AFC_COMMAND_HI = 0xc6;
     uint8_t lo = (((uint8_t) afc_auto_mode) << 6)
                  | (((uint8_t) afc_range_limit) << 4)
@@ -110,6 +124,7 @@ void alpha_rx_afc_command(
                  | (((uint8_t) afc_output_register) << 1)
                  | (((uint8_t) afc_enable));
     spi_send_2(AFC_COMMAND_HI, lo);
+    _delay_us(7.0);
 }
 
 void alpha_rx_data_filter_command(
@@ -118,6 +133,8 @@ void alpha_rx_data_filter_command(
         enum FilterType filter_type,
         enum DqdThreshold dqd_threshold
 ) {
+    printf("alpha_rx_data_filter_command(%d, %d, %d, %d)\n",
+           clock_recovery_auto_lock, clock_recovery_mode, filter_type, dqd_threshold);
     static const uint8_t DATA_FILTER_COMMAND_HI = 0xc4;
     static const uint8_t DATA_FILTER_COMMAND_LO = 0x20;
     uint8_t lo = DATA_FILTER_COMMAND_LO
@@ -125,12 +142,15 @@ void alpha_rx_data_filter_command(
                  | (((uint8_t) clock_recovery_mode) << 6)
                  | (((uint8_t) filter_type << 3));
     spi_send_2(DATA_FILTER_COMMAND_HI, lo);
+    _delay_us(7.0);
 }
 
 
 void alpha_rx_data_rate_command(uint8_t cs_r) {
+    printf("alpha_rx_data_rate_command(%" PRId8 ")\n", cs_r);
     static const uint8_t DATA_RATE_COMMAND_HI = 0xc8;
     spi_send_2(DATA_RATE_COMMAND_HI, cs_r);
+    _delay_us(7.0);
 }
 
 void alpha_rx_output_and_fifo_command(
@@ -138,22 +158,75 @@ void alpha_rx_output_and_fifo_command(
         enum FifoStartFillCondition fifo_start_fill_condition,
         bool fill_after_synchron_word,
         bool enable_16_bit_fifo_mode) {
+    printf("alpha_rx_output_and_fifo_command(%" PRId8 ", %d, %d, %d)\n",
+           fifo_interrupt_level, fifo_start_fill_condition, fill_after_synchron_word, enable_16_bit_fifo_mode);
     static const uint8_t FIFO_COMMAND_HI = 0xce;
     uint8_t lo = fifo_interrupt_level << 4
                | (((uint8_t)fifo_start_fill_condition) << 2)
                | (((uint8_t)fill_after_synchron_word) << 1)
                | (((uint8_t)enable_16_bit_fifo_mode));
     spi_send_2(FIFO_COMMAND_HI, lo);
+    _delay_us(7.0);
 }
 
 void alpha_rx_reset_fifo_command(
         uint8_t fifo_interrupt_level,
         enum FifoStartFillCondition fifo_start_fill_condition) {
+    printf("alpha_rx_reset_fifo_command(%" PRId8 ", %d)\n",
+           fifo_interrupt_level, fifo_start_fill_condition);
     alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, false, false);
-    _delay_us(7);
     alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, false, true);
 }
 
 void alpha_rx_reset() {
+    printf("alpha_rx_reset()\n");
     spi_send_2(0xff, 0x00);
+    _delay_ms(2000);
+}
+
+void alpha_rx_tune(int num_runs,
+                   enum VdiSource vdi_source,
+                   enum Band band,
+                   bool enable_low_battery_detection,
+                   bool enable_wake_up_timer,
+                   bool enable_crystal_oscillator,
+                   enum CrystalLoadCapacitor crystal_load_capacitor,
+                   bool disable_clock_output) {
+    for (int i = 0; i != num_runs; ++i) {
+        for (int lna_gain = LNA_GAIN_0_DBM; lna_gain <= LNA_GAIN_MINUS_20_DBM; ++lna_gain) {
+            for (int drssi_threshold = DRSSI_MINUS_103_DBM; drssi_threshold <= DRSSI_MINUS_61_DBM; ++drssi_threshold) {
+                alpha_rx_receiver_setting_command(
+                        vdi_source,
+                        (enum LnaGain) lna_gain,
+                        (enum DrssiTheshold) drssi_threshold,
+                        RECEIVER_ENABLE);
+                for (int bandwidth = BASEBAND_BANDWIDTH_400kHz; bandwidth <= BASEBAND_BANDWIDTH_67kHz; ++bandwidth) {
+                    alpha_rx_configuration_setting_command(
+                            band,
+                            enable_low_battery_detection,
+                            enable_wake_up_timer,
+                            enable_crystal_oscillator,
+                            crystal_load_capacitor,
+                            (enum BasebandBandwidth) bandwidth,
+                            disable_clock_output);
+                    float rssi = sample_rssi(5000);
+                    printf("%d, %d, %d, %d, %f\n", i, lna_gain, drssi_threshold, bandwidth, rssi);
+                }
+            }
+        }
+    }
+}
+
+float sample_rssi(int num_times) {
+
+    int rssi_count = 0;
+    for (int i = 0; i < num_times; ++i) {
+        uint16_t status = alpha_rx_get_status_command();
+        if (status & 0x0400) {
+            ++rssi_count;
+        }
+        _delay_us(100);
+    }
+    float proportion = (float)rssi_count / (float)num_times;
+    return proportion;
 }

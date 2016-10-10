@@ -195,4 +195,15 @@ void alpha_rx_reset_fifo_command(
 
 void alpha_rx_reset();
 
+void alpha_rx_tune(int num_runs,
+                   enum VdiSource vdi_source,
+                   enum Band band,
+                   bool enable_low_battery_detection,
+                   bool enable_wake_up_timer,
+                   bool enable_crystal_oscillator,
+                   enum CrystalLoadCapacitor crystal_load_capacitor,
+                   bool disable_clock_output);
+
+float sample_rssi(int num_times);
+
 #endif //RX200R_ALPHA_RX_COMMANDS_H

@@ -74,7 +74,7 @@ uint8_t test_nirq_interrupt() {
 }
 
 void enable_spi() {
-    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1);
+    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1)|(1<<SPR0); // fOSC / 128
 }
 
 void disable_spi() {
@@ -127,6 +127,8 @@ int main (void)
     // USB Serial 0
     uart0_init(UART_BAUD_SELECT(9600, F_CPU));
 
+    printf("\n\nStart!\n");
+
     DDRB = 0;
     SET(DDRB, DDB0);  // Green LED - configure bit 0 of PORTB for output
     SET(DDRB, DDB1);  // Red LED   - configure bit 1 of PORTB for output
@@ -169,36 +171,35 @@ int main (void)
 
     alpha_rx_get_status_command();
 
-    _delay_us(7.0);
+    alpha_rx_reset();  // Also resets the AVR on which this code is running!
 
-    //alpha_rx_reset();  // Also resets the AVR on which this code is running!
+    green_led_off();
+    red_led_off();
 
-    //_delay_ms(2000);
-
-    green_led_on();
+    const enum Band band = BAND_433_MHz;
+    const bool enable_low_battery_detection = false;
+    const bool enable_wake_up_timer = false;
+    const bool enable_crystal_oscillator = true;
+    const enum CrystalLoadCapacitor crystal_load_capacitor = XTAL_LOAD_CAP_12p0;
+    const enum BasebandBandwidth baseband_bandwidth = BASEBAND_BANDWIDTH_200kHz;
+    const bool disable_clock_output = true;
 
     alpha_rx_configuration_setting_command(
-            BAND_433_MHz,
-            false,
-            false,
-            true,
-            XTAL_LOAD_CAP_12p5,
-            BASEBAND_BANDWIDTH_200kHz,
-            true);
+            band,
+            enable_low_battery_detection,
+            enable_wake_up_timer,
+            enable_crystal_oscillator,
+            crystal_load_capacitor,
+            baseband_bandwidth,
+            disable_clock_output);
 
-    _delay_us(7.0);
-
-    uint16_t f = alpha_rx_frequency_to_f(BAND_433_MHz, 434.2f);
+    uint16_t f = alpha_rx_frequency_to_f(band, 434.2f);
     printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
-
-    _delay_us(7.0);
 
     uint8_t cs_r = alpha_rx_data_rate_to_cs_r(34482.75862068966);
     printf("cs_r = %hu\n", cs_r);
     alpha_rx_data_rate_command(cs_r);
-
-    _delay_us(7.0);
 
     // RFM01 command #3 CC0E (6. low duty-cycle command)
     // en = 0: disable low duty cycle mode
@@ -208,67 +209,75 @@ int main (void)
 
     alpha_rx_afc_command(
             AFC_AUTO_MODE_KEEP_OFFSET_WHEN_VDI_HI,
-            AFC_RANGE_LIMIT_PLUS_15_MINUS_16,
+            AFC_RANGE_LIMIT_PLUS_3_MINUS_4,
             AFC_ST_GOES_HI_WILL_STORE_OFFSET,
             AFC_HI_ACCURACY_ENABLE,
             AFC_OUTPUT_REGISTER_ENABLE,
             AFC_ENABLE
     );
 
-    _delay_us(7.0);
-
     alpha_rx_data_filter_command(
             CLOCK_RECOVERY_MANUAL,
             CLOCK_RECOVERY_FAST_MODE,
             DATA_FILTER_DIGITAL,
-            DQD_2
+            DQD_4
     );
 
-    _delay_us(7.0);
+    const enum VdiSource vdi_data_quality_detector = VDI_DATA_QUALITY_DETECTOR;
+    const enum LnaGain lna_gain = LNA_GAIN_0_DBM;
+    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_103_DBM;
 
     alpha_rx_receiver_setting_command(
-            VDI_CLOCK_RECOVERY_LOCK_OUTPUT,
-            LNA_GAIN_MINUS_6_DBM,
-            DRSSI_MINUS_103_DBM,
+            vdi_data_quality_detector,
+            lna_gain,
+            drssi_threshold,
             RECEIVER_DISABLE);
-
-    _delay_us(7.0);
 
     // TODO: Try to disable weird reset mode
     spi_send_2(0xda, 0x01);
 
     _delay_us(7.0);
 
-    alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_SYNC_WORD);
+    alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
 
     _delay_us(7.0);
 
     alpha_rx_receiver_setting_command(
-            VDI_CLOCK_RECOVERY_LOCK_OUTPUT,
-            LNA_GAIN_MINUS_6_DBM,
-            DRSSI_MINUS_103_DBM,
+            vdi_data_quality_detector,
+            lna_gain,
+            drssi_threshold,
             RECEIVER_ENABLE);
 
-    _delay_ms(5);
-
     alpha_rx_get_status_command();
-
-    _delay_us(7.0);
-
     alpha_rx_get_status_command();
-
-    _delay_ms(5);
 
     int index = 0;
 
+    green_led_on();
+
+    alpha_rx_tune(
+            2,
+            vdi_data_quality_detector,
+            band,
+            enable_low_battery_detection,
+            enable_wake_up_timer,
+            enable_crystal_oscillator,
+            crystal_load_capacitor,
+            disable_clock_output);
+
+    green_led_off();
+
     while (1) {
-        green_led_on();
-        _delay_ms(1000);
-        green_led_off();
         red_led_on();
         _delay_ms(1000);
         red_led_off();
+        _delay_ms(1000);
     }
+
+
+    alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
+
+    _delay_us(7.0);
 
     while (1) {
         //if (!test_nirq_interrupt()) {
@@ -276,15 +285,17 @@ int main (void)
             //bool full = false; // is the buffer full after receiving the byte waiting for us?
             const uint8_t status_hi = spi_receive(); // get status word MSB
             const uint8_t status_lo = spi_receive(); // get status word LSB
-            printf("%d %d\n", status_hi, status_lo);
+            printf("0x%02x 0x%02x\n", status_hi, status_lo);
 
             if ((status_hi & 0x40) != 0) { // FIFO overflow
                 printf("FIFO overflow\n");
+                red_led_on();
                 //full  = PACKET_BUFFER.add(data_1);
                 //full |= PACKET_BUFFER.add(spi_transfer_byte(0x00));
                 spi_receive();
             } else if ((status_hi & 0x80) != 0) { // FIFO has 8 bits ready
                 printf("FIFO ready\n");
+                green_led_on();
                 const uint8_t data_1 = spi_receive(); // get 1st byte of data
                 //full = PACKET_BUFFER.add(data_1);
                 buffer[index] = data_1;
@@ -295,7 +306,7 @@ int main (void)
             _delay_us(7);
 
             if (index == 10) {
-                alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_SYNC_WORD);
+                alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
             }
 
             _delay_us(7);
