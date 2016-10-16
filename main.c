@@ -148,8 +148,9 @@ void green_led_on() {
     CLR(PORTB, PORTB0); // Green LED off
 }
 
-const int BUFFER_LENGTH = 100;
-static uint8_t buffer[100];
+#define BUFFER_LENGTH 256
+
+static uint8_t buffer[BUFFER_LENGTH];
 
 
 #pragma clang diagnostic push
@@ -235,7 +236,7 @@ int main (void)
     printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
 
-    uint8_t cs_r = alpha_rx_data_rate_to_cs_r(34482.75862068966);
+    uint8_t cs_r = alpha_rx_data_rate_to_cs_r(17238);
     printf("cs_r = %hu\n", cs_r);
     alpha_rx_data_rate_command(cs_r);
 
@@ -354,7 +355,6 @@ int main (void)
                 ++packet_index;
                 in_packet = true;
                 most_recent_millis = now;
-
             }
             else {
                 //green_led_off();
@@ -362,7 +362,6 @@ int main (void)
 
             spi_deselect_slave();
 
-            _delay_us(7);
             unsigned long elapsed_since_most_recent = now - most_recent_millis;
             //printf("%lu\n", elapsed_since_most_recent);
             if (in_packet && elapsed_since_most_recent > 100) {
@@ -370,7 +369,7 @@ int main (void)
                 in_packet = false;
                 alpha_rx_reset_fifo_command(8, start_fifo_fill);
                 for (int p = 0; p < packet_index; ++p) {
-                    printf("%02x ", buffer[p]);
+                    printf("%02x", buffer[p]);
                 }
                 printf("  [%d]\n", packet_index);
                 packet_index = 0;
@@ -384,8 +383,11 @@ int main (void)
             }
 
             if (packet_index == BUFFER_LENGTH) {
+                printf("Buffer overflow!");
                 packet_index = 0;
             }
+
+            _delay_us(7);
         //}
     }
 
