@@ -148,7 +148,7 @@ void green_led_on() {
     CLR(PORTB, PORTB0); // Green LED off
 }
 
-#define BUFFER_LENGTH 256
+#define BUFFER_LENGTH 32
 
 static uint8_t buffer[BUFFER_LENGTH];
 
@@ -383,7 +383,6 @@ int main (void)
             }
 
             if (packet_index == BUFFER_LENGTH) {
-                printf("Buffer overflow!");
                 for (int p = 0; p < packet_index; ++p) {
                     printf("%02x", buffer[p]);
                 }
