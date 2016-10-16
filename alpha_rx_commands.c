@@ -25,6 +25,16 @@ uint16_t alpha_rx_get_status_command() {
     return result;
 }
 
+const char* BASEBAND_BANDWIDTH[7] = {
+        "--",
+        "400 kHz",
+        "340 kHz",
+        "270 kHz",
+        "200 kHz",
+        "134 kHz",
+        " 67 kHz"
+};
+
 void alpha_rx_configuration_setting_command(
         enum Band band,
         bool enable_low_battery_detection,
@@ -83,6 +93,30 @@ void alpha_rx_frequency_setting_command(uint16_t f) {
     spi_send_2(hi, lo);
     _delay_us(7.0);
 }
+
+const char* LNA_GAIN[4] = {
+        "-0 dBm",
+        "-14 dBm",
+        "-6 dBm",
+        "-20 dBm"
+};
+
+const enum LnaGain LNA_GAIN_ORDERED[4] = {
+        LNA_GAIN_0_DBM,
+        LNA_GAIN_MINUS_6_DBM,
+        LNA_GAIN_MINUS_14_DBM,
+        LNA_GAIN_MINUS_20_DBM};
+
+const char* DRSSI_THESHOLD[8] = {
+        "-130 dBm",
+        "-97 dBm",
+        "-91 dBm",
+        "-85 dBm",
+        "-79 dBm",
+        "-73 dBm",
+        "-67 dBm",
+        "-61 dBm"
+};
 
 void alpha_rx_receiver_setting_command(
         enum VdiSource vdi_source,
@@ -175,7 +209,7 @@ void alpha_rx_reset_fifo_command(
     printf("alpha_rx_reset_fifo_command(%" PRId8 ", %d)\n",
            fifo_interrupt_level, fifo_start_fill_condition);
     alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, false, false);
-    alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, false, true);
+    alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, true, true);
 }
 
 void alpha_rx_reset() {
@@ -193,13 +227,21 @@ void alpha_rx_tune(int num_runs,
                    enum CrystalLoadCapacitor crystal_load_capacitor,
                    bool disable_clock_output) {
     for (int i = 0; i != num_runs; ++i) {
-        for (int lna_gain = LNA_GAIN_0_DBM; lna_gain <= LNA_GAIN_MINUS_20_DBM; ++lna_gain) {
-            for (int drssi_threshold = DRSSI_MINUS_103_DBM; drssi_threshold <= DRSSI_MINUS_61_DBM; ++drssi_threshold) {
+        printf("Run %d\n", i + 1);
+        printf("%10s%10s", "LNA Gain", "DRSSI");
+        for (int bandwidth = BASEBAND_BANDWIDTH_400kHz; bandwidth <= BASEBAND_BANDWIDTH_67kHz; ++bandwidth) {
+            printf("%10s", BASEBAND_BANDWIDTH[bandwidth]);
+        }
+        putchar('\n');
+        for (int drssi_threshold = DRSSI_MINUS_103_DBM; drssi_threshold <= DRSSI_MINUS_61_DBM; ++drssi_threshold) {
+            for (int lna_gain_index = 0; lna_gain_index <= 3; ++lna_gain_index) {
+                enum LnaGain lna_gain = LNA_GAIN_ORDERED[lna_gain_index];
                 alpha_rx_receiver_setting_command(
                         vdi_source,
-                        (enum LnaGain) lna_gain,
+                        lna_gain,
                         (enum DrssiTheshold) drssi_threshold,
                         RECEIVER_ENABLE);
+                printf("%10s%10s", LNA_GAIN[lna_gain], DRSSI_THESHOLD[drssi_threshold]);
                 for (int bandwidth = BASEBAND_BANDWIDTH_400kHz; bandwidth <= BASEBAND_BANDWIDTH_67kHz; ++bandwidth) {
                     alpha_rx_configuration_setting_command(
                             band,
@@ -209,11 +251,21 @@ void alpha_rx_tune(int num_runs,
                             crystal_load_capacitor,
                             (enum BasebandBandwidth) bandwidth,
                             disable_clock_output);
-                    float rssi = sample_rssi(5000);
-                    printf("%d, %d, %d, %d, %f\n", i, lna_gain, drssi_threshold, bandwidth, rssi);
+                    float frssi = sample_rssi(5000);
+                    int rssi = (int) (frssi * 100.0f + 0.5f);
+                    printf("%8d%% ", rssi);
                 }
+                putchar('\n');
             }
         }
+    }
+}
+
+void alpha_rx_monitor_rssi(int num_periods, int num_times) {
+    for (int i = 0; i < num_periods; ++i) {
+        float frssi = sample_rssi(num_times);
+        int rssi = (int) (frssi * 100.0f + 0.5f);
+        printf("%d%%\n ", rssi);
     }
 }
 
@@ -230,3 +282,4 @@ float sample_rssi(int num_times) {
     float proportion = (float)rssi_count / (float)num_times;
     return proportion;
 }
+

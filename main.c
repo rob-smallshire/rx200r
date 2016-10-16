@@ -181,7 +181,7 @@ int main (void)
     const bool enable_wake_up_timer = false;
     const bool enable_crystal_oscillator = true;
     const enum CrystalLoadCapacitor crystal_load_capacitor = XTAL_LOAD_CAP_12p0;
-    const enum BasebandBandwidth baseband_bandwidth = BASEBAND_BANDWIDTH_200kHz;
+    const enum BasebandBandwidth baseband_bandwidth = BASEBAND_BANDWIDTH_67kHz;
     const bool disable_clock_output = true;
 
     alpha_rx_configuration_setting_command(
@@ -209,7 +209,7 @@ int main (void)
 
     alpha_rx_afc_command(
             AFC_AUTO_MODE_KEEP_OFFSET_WHEN_VDI_HI,
-            AFC_RANGE_LIMIT_PLUS_3_MINUS_4,
+            AFC_RANGE_LIMIT_PLUS_15_MINUS_16,
             AFC_ST_GOES_HI_WILL_STORE_OFFSET,
             AFC_HI_ACCURACY_ENABLE,
             AFC_OUTPUT_REGISTER_ENABLE,
@@ -217,15 +217,15 @@ int main (void)
     );
 
     alpha_rx_data_filter_command(
-            CLOCK_RECOVERY_MANUAL,
+            CLOCK_RECOVERY_AUTO_LOCK,
             CLOCK_RECOVERY_FAST_MODE,
             DATA_FILTER_DIGITAL,
             DQD_4
     );
 
-    const enum VdiSource vdi_data_quality_detector = VDI_DATA_QUALITY_DETECTOR;
-    const enum LnaGain lna_gain = LNA_GAIN_0_DBM;
-    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_103_DBM;
+    const enum VdiSource vdi_data_quality_detector = VDI_DRSSI;
+    const enum LnaGain lna_gain = LNA_GAIN_MINUS_20_DBM;
+    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_85_DBM;
 
     alpha_rx_receiver_setting_command(
             vdi_data_quality_detector,
@@ -238,7 +238,9 @@ int main (void)
 
     _delay_us(7.0);
 
-    alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
+    enum FifoStartFillCondition start_fifo_fill = FIFO_START_FILL_ON_SYNC_WORD;
+    uint8_t fifo_interrupt_level = 8;
+    alpha_rx_reset_fifo_command(fifo_interrupt_level, start_fifo_fill);
 
     _delay_us(7.0);
 
@@ -255,32 +257,35 @@ int main (void)
 
     green_led_on();
 
-    alpha_rx_tune(
-            2,
-            vdi_data_quality_detector,
-            band,
-            enable_low_battery_detection,
-            enable_wake_up_timer,
-            enable_crystal_oscillator,
-            crystal_load_capacitor,
-            disable_clock_output);
+//    alpha_rx_tune(
+//            -1,
+//            vdi_data_quality_detector,
+//            band,
+//            enable_low_battery_detection,
+//            enable_wake_up_timer,
+//            enable_crystal_oscillator,
+//            crystal_load_capacitor,
+//            disable_clock_output);
 
+    alpha_rx_monitor_rssi(1000, 1000);
+
+    red_led_on();
     green_led_off();
 
-    while (1) {
-        red_led_on();
-        _delay_ms(1000);
-        red_led_off();
-        _delay_ms(1000);
-    }
+//    while (1) {
+//        red_led_on();
+//        _delay_ms(1000);
+//        red_led_off();
+//        _delay_ms(1000);
+//    }
 
 
-    alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
+    alpha_rx_reset_fifo_command(fifo_interrupt_level, start_fifo_fill);
 
     _delay_us(7.0);
 
     while (1) {
-        //if (!test_nirq_interrupt()) {
+        if (!test_nirq_interrupt()) {
             spi_select_slave();
             //bool full = false; // is the buffer full after receiving the byte waiting for us?
             const uint8_t status_hi = spi_receive(); // get status word MSB
@@ -292,8 +297,14 @@ int main (void)
                 red_led_on();
                 //full  = PACKET_BUFFER.add(data_1);
                 //full |= PACKET_BUFFER.add(spi_transfer_byte(0x00));
-                spi_receive();
-            } else if ((status_hi & 0x80) != 0) { // FIFO has 8 bits ready
+                //spi_receive();
+                index = 10;
+            }
+            else {
+                red_led_off();
+            }
+
+            if ((status_hi & 0x80) != 0) { // FIFO has 8 bits ready
                 printf("FIFO ready\n");
                 green_led_on();
                 const uint8_t data_1 = spi_receive(); // get 1st byte of data
@@ -301,25 +312,34 @@ int main (void)
                 buffer[index] = data_1;
                 ++index;
             }
+            else {
+                green_led_off();
+            }
+
             spi_deselect_slave();
 
             _delay_us(7);
 
             if (index == 10) {
-                alpha_rx_reset_fifo_command(8, FIFO_START_FILL_ON_VALID_DATA_INDICATOR);
+                green_led_off();
+                red_led_off();
+                index = 0;
+                alpha_rx_reset_fifo_command(8, start_fifo_fill);
+
             }
 
             _delay_us(7);
-        //}
+        }
     }
 
 //    while (1) {
 //        uint8_t value = 0;
 //        if (test_fifo_interrupt()) {
+//            green_led_on();
 //            disable_spi();
 //            select_fifo();
 //            uint8_t bit_counter = 0;
-//            while(test_fifo_interrupt()) {
+//            while (test_fifo_interrupt()) {
 //                _delay_us(2);
 //                sck_lo();
 //                _delay_us(2);
@@ -334,6 +354,9 @@ int main (void)
 //            }
 //            deselect_fifo();
 //            enable_spi();
+//        }
+//        else {
+//            green_led_off();
 //        }
 //    }
 }

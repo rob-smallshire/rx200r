@@ -34,6 +34,7 @@ enum CrystalLoadCapacitor {
     XTAL_LOAD_CAP_16p0 = 15
 };
 enum BasebandBandwidth {
+    BASEBAND_BANDWIDTH_RESERVED = 0,
     BASEBAND_BANDWIDTH_400kHz = 1,
     BASEBAND_BANDWIDTH_340kHz = 2,
     BASEBAND_BANDWIDTH_270kHz = 3,
@@ -41,6 +42,8 @@ enum BasebandBandwidth {
     BASEBAND_BANDWIDTH_134kHz = 5,
     BASEBAND_BANDWIDTH_67kHz = 6
 };
+
+extern const char* BASEBAND_BANDWIDTH[7];
 
 uint16_t alpha_rx_get_status_command();
 
@@ -73,6 +76,10 @@ enum LnaGain {
     LNA_GAIN_MINUS_20_DBM = 3
 };
 
+extern const char* LNA_GAIN[4];
+
+extern const enum LnaGain LNA_GAIN_ORDERED[4];
+
 enum DrssiTheshold {
     DRSSI_MINUS_103_DBM = 0,
     DRSSI_MINUS_97_DBM = 1,
@@ -83,6 +90,8 @@ enum DrssiTheshold {
     DRSSI_MINUS_67_DBM = 6,
     DRSSI_MINUS_61_DBM = 7
 };
+
+extern const char* DRSSI_THESHOLD[8];
 
 enum ReceiverState {
     RECEIVER_DISABLE = 0,
@@ -203,6 +212,8 @@ void alpha_rx_tune(int num_runs,
                    bool enable_crystal_oscillator,
                    enum CrystalLoadCapacitor crystal_load_capacitor,
                    bool disable_clock_output);
+
+void alpha_rx_monitor_rssi(int num_periods, int num_times);
 
 float sample_rssi(int num_times);
 
