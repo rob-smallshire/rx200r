@@ -164,7 +164,7 @@ int main (void)
     stdin = stdout = &uart0_stream;
 
     // USB Serial 0
-    uart0_init(UART_BAUD_SELECT(9600, F_CPU));
+    uart0_init(UART_BAUD_SELECT(115200, F_CPU));
 
     printf("\n\nStart!\n");
 
@@ -232,11 +232,11 @@ int main (void)
             baseband_bandwidth,
             disable_clock_output);
 
-    uint16_t f = alpha_rx_frequency_to_f(band, 434.2f);
+    uint16_t f = alpha_rx_frequency_to_f(band, 433.45f);
     printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
 
-    uint8_t cs_r = alpha_rx_data_rate_to_cs_r(17238);
+    uint8_t cs_r = alpha_rx_data_rate_to_cs_r(17240);
     printf("cs_r = %hu\n", cs_r);
     alpha_rx_data_rate_command(cs_r);
 
@@ -384,6 +384,10 @@ int main (void)
 
             if (packet_index == BUFFER_LENGTH) {
                 printf("Buffer overflow!");
+                //for (int p = 0; p < packet_index; ++p) {
+                //    printf("%02x", buffer[p]);
+                //}
+                //printf("  [%d]\n", packet_index);
                 packet_index = 0;
             }
 
