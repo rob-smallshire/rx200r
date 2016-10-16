@@ -277,7 +277,7 @@ int main (void)
 
     _delay_us(7.0);
 
-    enum FifoStartFillCondition start_fifo_fill = FIFO_START_FILL_ON_VALID_DATA_INDICATOR;
+    enum FifoStartFillCondition start_fifo_fill = FIFO_START_FILL_ON_SYNC_WORD;
     uint8_t fifo_interrupt_level = 8;
     alpha_rx_reset_fifo_command(fifo_interrupt_level, start_fifo_fill);
 
@@ -384,11 +384,13 @@ int main (void)
 
             if (packet_index == BUFFER_LENGTH) {
                 printf("Buffer overflow!");
-                //for (int p = 0; p < packet_index; ++p) {
-                //    printf("%02x", buffer[p]);
-                //}
-                //printf("  [%d]\n", packet_index);
+                for (int p = 0; p < packet_index; ++p) {
+                    printf("%02x", buffer[p]);
+                }
+                printf("  [%d]\n", packet_index);
+                alpha_rx_reset_fifo_command(8, start_fifo_fill);
                 packet_index = 0;
+                in_packet = false;
             }
 
             _delay_us(7);
