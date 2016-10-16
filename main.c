@@ -109,7 +109,7 @@ uint8_t test_nirq_interrupt() {
 }
 
 void enable_spi() {
-    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1)|(1<<SPR0); // fOSC / 128
+    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0); // fOSC / 16
 }
 
 void disable_spi() {
