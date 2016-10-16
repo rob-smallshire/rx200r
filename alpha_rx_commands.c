@@ -192,8 +192,8 @@ void alpha_rx_output_and_fifo_command(
         enum FifoStartFillCondition fifo_start_fill_condition,
         bool fill_after_synchron_word,
         bool enable_16_bit_fifo_mode) {
-    printf("alpha_rx_output_and_fifo_command(%" PRId8 ", %d, %d, %d)\n",
-           fifo_interrupt_level, fifo_start_fill_condition, fill_after_synchron_word, enable_16_bit_fifo_mode);
+    //printf("alpha_rx_output_and_fifo_command(%" PRId8 ", %d, %d, %d)\n",
+    //       fifo_interrupt_level, fifo_start_fill_condition, fill_after_synchron_word, enable_16_bit_fifo_mode);
     static const uint8_t FIFO_COMMAND_HI = 0xce;
     uint8_t lo = fifo_interrupt_level << 4
                | (((uint8_t)fifo_start_fill_condition) << 2)
@@ -206,8 +206,8 @@ void alpha_rx_output_and_fifo_command(
 void alpha_rx_reset_fifo_command(
         uint8_t fifo_interrupt_level,
         enum FifoStartFillCondition fifo_start_fill_condition) {
-    printf("alpha_rx_reset_fifo_command(%" PRId8 ", %d)\n",
-           fifo_interrupt_level, fifo_start_fill_condition);
+    //printf("alpha_rx_reset_fifo_command(%" PRId8 ", %d)\n",
+    //       fifo_interrupt_level, fifo_start_fill_condition);
     alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, false, false);
     alpha_rx_output_and_fifo_command(fifo_interrupt_level, fifo_start_fill_condition, true, true);
 }

@@ -3,7 +3,7 @@
 #include <avr/interrupt.h>
 
 #include <util/delay.h>
-//#include <util/atomic.h>
+#include <util/atomic.h>
 
 #include "uart.h"
 #include "alpha_rx_commands.h"
@@ -20,6 +20,41 @@
 #else
 #  define UNUSED_FUNCTION(x) UNUSED_ ## x
 #endif
+
+uint16_t CTC_MATCH_OVERFLOW = ((F_CPU / 1000) / 8);
+
+volatile unsigned long timer1_millis;
+long milliseconds_since;
+
+ISR (TIMER1_COMPA_vect)
+{
+    timer1_millis++;
+}
+
+unsigned long millis()
+{
+    unsigned long millis_return = 0;
+
+    // Ensure this cannot be disrupted
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        millis_return = timer1_millis;
+    }
+
+    return millis_return;
+}
+
+void init_millis() {
+    // CTC mode, Clock/8
+    TCCR1B |= (1 << WGM12) | (1 << CS11);
+
+    // Load the high byte, then the low byte
+    // into the output compare
+    OCR1AH = (CTC_MATCH_OVERFLOW >> 8);
+    OCR1AL = CTC_MATCH_OVERFLOW;
+
+    // Enable the compare match interrupt
+    TIMSK1 |= (1 << OCIE1A);
+}
 
 int uart0_send_byte(char data, FILE* UNUSED(stream))
 {
@@ -113,6 +148,7 @@ void green_led_on() {
     CLR(PORTB, PORTB0); // Green LED off
 }
 
+const int BUFFER_LENGTH = 100;
 static uint8_t buffer[100];
 
 
@@ -120,6 +156,8 @@ static uint8_t buffer[100];
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 int main (void)
 {
+    init_millis();
+
     sei();
 
     stdin = stdout = &uart0_stream;
@@ -253,8 +291,6 @@ int main (void)
     alpha_rx_get_status_command();
     alpha_rx_get_status_command();
 
-    int index = 0;
-
     green_led_on();
 
 //    alpha_rx_tune(
@@ -283,52 +319,73 @@ int main (void)
     alpha_rx_reset_fifo_command(fifo_interrupt_level, start_fifo_fill);
 
     _delay_us(7.0);
-
+    unsigned long most_recent_millis = 0;
+    bool in_packet = false;
+    int packet_index = 0;
     while (1) {
         //if (!test_nirq_interrupt()) {
+            unsigned long now = millis();
             spi_select_slave();
             //bool full = false; // is the buffer full after receiving the byte waiting for us?
             const uint8_t status_hi = spi_receive(); // get status word MSB
-            const uint8_t status_lo = spi_receive(); // get status word LSB
-            printf("0x%02x 0x%02x\n", status_hi, status_lo);
-
+            /*const uint8_t status_lo = */ spi_receive(); // get status word LSB
+            //printf("0x%02x 0x%02x\n", status_hi, status_lo);
+            //printf("%lu\n", millis());
             if ((status_hi & 0x40) != 0) { // FIFO overflow
-                printf("FIFO overflow\n");
+                //printf("FIFO overflow\n");
                 red_led_on();
                 //full  = PACKET_BUFFER.add(data_1);
                 //full |= PACKET_BUFFER.add(spi_transfer_byte(0x00));
                 //spi_receive();
-                index = 10;
+                in_packet = false;
+                //packet_index = 0;
             }
             else {
                 red_led_off();
             }
 
             if ((status_hi & 0x80) != 0) { // FIFO has 8 bits ready
-                printf("FIFO ready\n");
-                green_led_on();
-                const uint8_t data_1 = spi_receive(); // get 1st byte of data
+                //printf("FIFO ready\n");
+                //in_packet = true;
+                const uint8_t data_1 = spi_receive(); // get next byte of data
+                //printf("%02x ", data_1);
                 //full = PACKET_BUFFER.add(data_1);
-                buffer[index] = data_1;
-                ++index;
+                buffer[packet_index] = data_1;
+                ++packet_index;
+                in_packet = true;
+                most_recent_millis = now;
+
             }
             else {
-                green_led_off();
+                //green_led_off();
             }
 
             spi_deselect_slave();
 
             _delay_us(7);
-
-            if (index == 10) {
-                green_led_off();
-                red_led_off();
-                index = 0;
+            unsigned long elapsed_since_most_recent = now - most_recent_millis;
+            //printf("%lu\n", elapsed_since_most_recent);
+            if (in_packet && elapsed_since_most_recent > 100) {
+                // Packet over
+                in_packet = false;
                 alpha_rx_reset_fifo_command(8, start_fifo_fill);
-
+                for (int p = 0; p < packet_index; ++p) {
+                    printf("%02x ", buffer[p]);
+                }
+                printf("  [%d]\n", packet_index);
+                packet_index = 0;
             }
 
-            _delay_us(7);
+            if (in_packet) {
+                green_led_on();
+            }
+            else {
+                green_led_off();
+            }
+
+            if (packet_index == BUFFER_LENGTH) {
+                packet_index = 0;
+            }
         //}
     }
 
