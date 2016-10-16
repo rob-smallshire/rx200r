@@ -238,7 +238,7 @@ int main (void)
 
     _delay_us(7.0);
 
-    enum FifoStartFillCondition start_fifo_fill = FIFO_START_FILL_ON_SYNC_WORD;
+    enum FifoStartFillCondition start_fifo_fill = FIFO_START_FILL_ON_VALID_DATA_INDICATOR;
     uint8_t fifo_interrupt_level = 8;
     alpha_rx_reset_fifo_command(fifo_interrupt_level, start_fifo_fill);
 
@@ -267,7 +267,7 @@ int main (void)
 //            crystal_load_capacitor,
 //            disable_clock_output);
 
-    alpha_rx_monitor_rssi(1000, 1000);
+//    alpha_rx_monitor_rssi(1000, 1000);
 
     red_led_on();
     green_led_off();
@@ -285,7 +285,7 @@ int main (void)
     _delay_us(7.0);
 
     while (1) {
-        if (!test_nirq_interrupt()) {
+        //if (!test_nirq_interrupt()) {
             spi_select_slave();
             //bool full = false; // is the buffer full after receiving the byte waiting for us?
             const uint8_t status_hi = spi_receive(); // get status word MSB
@@ -329,7 +329,7 @@ int main (void)
             }
 
             _delay_us(7);
-        }
+        //}
     }
 
 //    while (1) {
