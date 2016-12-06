@@ -132,20 +132,20 @@ void deselect_fifo() {
     SET(PORTC, PORTC2); // Deselect FIFO
 }
 
-void red_led_off() {
-    SET(PORTB, PORTB1); // Red LED off
-}
-
 void green_led_off() {
-    SET(PORTB, PORTB0); // Green LED off
+    SET(PORTB, PORTB1); // Green LED off
 }
 
-void red_led_on() {
-    CLR(PORTB, PORTB1); // Red LED off
+void red_led_off() {
+    SET(PORTB, PORTB0); // Red LED off
 }
 
 void green_led_on() {
-    CLR(PORTB, PORTB0); // Green LED off
+    CLR(PORTB, PORTB1); // Green LED off
+}
+
+void red_led_on() {
+    CLR(PORTB, PORTB0); // Red LED off
 }
 
 #define BUFFER_LENGTH 32
@@ -164,18 +164,28 @@ int main (void)
     stdin = stdout = &uart0_stream;
 
     // USB Serial 0
-    uart0_init(UART_BAUD_SELECT(115200, F_CPU));
+    uart0_init(UART_BAUD_SELECT(9600, F_CPU));
 
     printf("\n\nStart!\n");
 
     DDRB = 0;
-    SET(DDRB, DDB0);  // Green LED - configure bit 0 of PORTB for output
-    SET(DDRB, DDB1);  // Red LED   - configure bit 1 of PORTB for output
+    SET(DDRB, DDB0);  // Red LED - configure bit 0 of PORTB for output
+    SET(DDRB, DDB1);  // Green LED   - configure bit 1 of PORTB for output
     SET(DDRB, DDB2);  // nSS       - configure bit 2 of PORTB for output
     SET(DDRB, DDB3);  // MOSI      - configure bit 3 of PORTB for output
     CLR(DDRB, DDB4);  // MISO      - configure bit 4 of PORTB for input
     SET(DDRB, DDB5);  // SCK       - configure bit 5 of PORTB for output
     // Bits 6 and 7 of PORTB are unavailable - pins used by crystal clock
+
+    while (true) {
+        green_led_on();
+        red_led_off();
+        _delay_ms(500);
+        green_led_off();
+        red_led_on();
+        _delay_ms(500);
+    }
+
 
     DDRC = 0;
     CLR(DDRC, DDC0);  // VDI  - configure bit 0 of PORTC for input
