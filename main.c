@@ -4,11 +4,13 @@
 
 #include <util/delay.h>
 #include <util/atomic.h>
+#include <string.h>
 
 #include "uart.h"
 #include "alpha_rx_commands.h"
 #include "spi.h"
 #include "checksum.h"
+#include "decode.h"
 
 #define HAT_REV1
 
@@ -101,6 +103,9 @@ void sck_hi();
 
 void parse_packet(int packet_index);
 
+void display_buffer_hex(int packet_index);
+void display_buffer_utf8();
+
 enum {
  BLINK_DELAY_MS = 1000,
 };
@@ -158,6 +163,7 @@ void red_led_on() {
 static uint8_t buffer[BUFFER_LENGTH];
 
 
+static char *const NO_READING = "--";
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 int main (void)
@@ -182,30 +188,12 @@ int main (void)
     SET(DDRB, DDB5);  // SCK       - configure bit 5 of PORTB for output
     // Bits 6 and 7 of PORTB are unavailable - pins used by crystal clock
 
-//    char str[100];
-//
-//    while (true) {
-//        green_led_on();
-//        red_led_off();
-//        printf("Green!\n");
-//        _delay_ms(500);
-//        green_led_off();
-//        red_led_on();
-//        printf("Red!\n");
-//        _delay_ms(500);
-//
-//        printf("Enter any string ( upto 100 character ) \n");
-//        scanf("%100s", str);
-//        printf("Entered string is %s \n", str);
-//    }
-
 
     DDRC = 0;
-    CLR(DDRD, DDC4);  // VDI  - configure bit 0 of PORTC for input
-    CLR(DDRD, DDD3);  // FFIT - configure bit 1 of PORTC for input
-    SET(DDRD, DDD5);  // nFFS - configure bit 2 of PORTC for output
-    CLR(DDRD, DDD2);  // nIRQ - configure bit 3 of PORTC for input
-    // Bits 4 to 7 of PORTC are unavailable
+    CLR(DDRD, DDC4);  // VDI  - configure bit 0 of PORTD for input
+    CLR(DDRD, DDD3);  // FFIT - configure bit 1 of PORTD for input
+    SET(DDRD, DDD5);  // nFFS - configure bit 2 of PORTD for output
+    CLR(DDRD, DDD2);  // nIRQ - configure bit 3 of PORTD for input
 
     green_led_off();
     red_led_off();
@@ -233,7 +221,7 @@ int main (void)
 
     alpha_rx_get_status_command();
 
-    alpha_rx_reset();  // Also resets the AVR on which this code is running!
+    alpha_rx_reset();
 
     green_led_off();
     red_led_off();
@@ -243,7 +231,7 @@ int main (void)
     const bool enable_wake_up_timer = false;
     const bool enable_crystal_oscillator = true;
     const enum CrystalLoadCapacitor crystal_load_capacitor = XTAL_LOAD_CAP_12p0;
-    const enum BasebandBandwidth baseband_bandwidth = BASEBAND_BANDWIDTH_67kHz;
+    const enum BasebandBandwidth baseband_bandwidth = BASEBAND_BANDWIDTH_134kHz;
     const bool disable_clock_output = true;
 
     alpha_rx_configuration_setting_command(
@@ -287,7 +275,7 @@ int main (void)
 
     const enum VdiSource vdi_data_quality_detector = VDI_DRSSI;
     const enum LnaGain lna_gain = LNA_GAIN_MINUS_20_DBM;
-    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_103_DBM;
+    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_91_DBM;
 
     alpha_rx_receiver_setting_command(
             vdi_data_quality_detector,
@@ -407,14 +395,58 @@ void parse_packet(int packet_index) {
     uint8_t received_checksum = buffer[30];
     if (computed_checksum == received_checksum) {
         red_led_off();
-        for (int p = 0; p < packet_index; ++p) {
-            printf("%02x", buffer[p]);
-        }
-        printf("  [%d]\n", packet_index);
+        //display_buffer_hex(packet_index);
+        display_buffer_utf8();
     } else {
         printf("Bad checksum computed %02x != %02x received\n", computed_checksum, received_checksum);
         red_led_on();
     }
 }
 
+void display_buffer_hex(int packet_index) {
+    for (int p = 0; p < packet_index; ++p) {
+            printf("%02x ", buffer[p]);
+        }
+    printf("  [%d]\n", packet_index);
+}
+
+void display_buffer_utf8() {
+    printf("id = %.8s", (char*)&buffer[1]); // 1-9
+    char decimal[7];
+
+    // Irradiance
+    if (buffer[11] != 0) {
+        decimal_to_str(buffer[9], buffer[10], &decimal[0]);
+    } else {
+        strcpy(&decimal[0], NO_READING);
+    }
+    printf(", E = %s W/m\xc2\xb2", decimal);
+
+
+    // Ambient temperature
+    if (buffer[14] != 0) {
+        decimal_to_str(buffer[12], buffer[13], &decimal[0]);
+    } else {
+        strcpy(&decimal[0], NO_READING);
+    }
+    printf(", Ta = %s\xc2\xb0""C", decimal);
+
+    // Panel temperature
+    if (buffer[17] != 0) {
+        decimal_to_str(buffer[15], buffer[16], &decimal[0]);
+    } else {
+        strcpy(&decimal[0], NO_READING);
+    }
+    printf(", Tpv = %s\xc2\xb0""C", decimal);
+
+    printf(", t = %04" PRId16 "-%02" PRId8 "-%02" PRId8 "T%02" PRId8 ":%02" PRId8 ":%02" PRId8,
+           buffer[23] + 2000,
+           buffer[22],
+           buffer[21],
+           buffer[20],
+           buffer[19],
+           buffer[18]);
+
+    printf("\n");
+}
 

@@ -157,6 +157,7 @@ add_avr_executable(
         alpha_rx_commands.c
         spi.c
         checksum.c
+        decode.c
 )
 
 # find_library(M_LIB m)
