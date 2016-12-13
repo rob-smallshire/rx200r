@@ -8,6 +8,9 @@
 #include "uart.h"
 #include "alpha_rx_commands.h"
 #include "spi.h"
+#include "checksum.h"
+
+#define HAT_REV1
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -96,16 +99,18 @@ void sck_lo();
 
 void sck_hi();
 
+void parse_packet(int packet_index);
+
 enum {
  BLINK_DELAY_MS = 1000,
 };
 
 uint8_t test_fifo_interrupt() {
-    return TST(PINC, PINC1);
+    return TST(PIND, PIND3);
 }
 
 uint8_t test_nirq_interrupt() {
-    return TST(PINC, PINC3);
+    return TST(PIND, PIND2);
 }
 
 void enable_spi() {
@@ -125,11 +130,11 @@ void sck_lo() {
 }
 
 void select_fifo() {
-    CLR(PORTC, PORTC2);
+    CLR(PORTD, PORTD5);
 }
 
 void deselect_fifo() {
-    SET(PORTC, PORTC2); // Deselect FIFO
+    SET(PORTD, PORTD5); // Deselect FIFO
 }
 
 void green_led_off() {
@@ -177,28 +182,36 @@ int main (void)
     SET(DDRB, DDB5);  // SCK       - configure bit 5 of PORTB for output
     // Bits 6 and 7 of PORTB are unavailable - pins used by crystal clock
 
-    while (true) {
-        green_led_on();
-        red_led_off();
-        _delay_ms(500);
-        green_led_off();
-        red_led_on();
-        _delay_ms(500);
-    }
+//    char str[100];
+//
+//    while (true) {
+//        green_led_on();
+//        red_led_off();
+//        printf("Green!\n");
+//        _delay_ms(500);
+//        green_led_off();
+//        red_led_on();
+//        printf("Red!\n");
+//        _delay_ms(500);
+//
+//        printf("Enter any string ( upto 100 character ) \n");
+//        scanf("%100s", str);
+//        printf("Entered string is %s \n", str);
+//    }
 
 
     DDRC = 0;
-    CLR(DDRC, DDC0);  // VDI  - configure bit 0 of PORTC for input
-    CLR(DDRC, DDC1);  // FFIT - configure bit 1 of PORTC for input
-    SET(DDRC, DDC2);  // nFFS - configure bit 2 of PORTC for output
-    CLR(DDRC, DDC3);  // nIRQ - configure bit 3 of PORTC for input
+    CLR(DDRD, DDC4);  // VDI  - configure bit 0 of PORTC for input
+    CLR(DDRD, DDD3);  // FFIT - configure bit 1 of PORTC for input
+    SET(DDRD, DDD5);  // nFFS - configure bit 2 of PORTC for output
+    CLR(DDRD, DDD2);  // nIRQ - configure bit 3 of PORTC for input
     // Bits 4 to 7 of PORTC are unavailable
 
     green_led_off();
     red_led_off();
 
     deselect_fifo();
-    SET(PORTC, PORTC3); // Pull-up on nIRQ
+    SET(PORTD, PORTD2); // Pull-up on nIRQ
 
     /* Setup SPI */
     spi_deselect_slave();
@@ -242,7 +255,7 @@ int main (void)
             baseband_bandwidth,
             disable_clock_output);
 
-    uint16_t f = alpha_rx_frequency_to_f(band, 433.45f);
+    uint16_t f = alpha_rx_frequency_to_f(band, 434.45f);
     printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
 
@@ -274,7 +287,7 @@ int main (void)
 
     const enum VdiSource vdi_data_quality_detector = VDI_DRSSI;
     const enum LnaGain lna_gain = LNA_GAIN_MINUS_20_DBM;
-    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_85_DBM;
+    const enum DrssiTheshold drssi_threshold = DRSSI_MINUS_103_DBM;
 
     alpha_rx_receiver_setting_command(
             vdi_data_quality_detector,
@@ -314,7 +327,7 @@ int main (void)
 //            crystal_load_capacitor,
 //            disable_clock_output);
 
-//    alpha_rx_monitor_rssi(1000, 1000);
+//alpha_rx_monitor_rssi(1000, 1000);
 
     red_led_on();
     green_led_off();
@@ -334,56 +347,27 @@ int main (void)
     bool in_packet = false;
     int packet_index = 0;
     while (1) {
-        //if (!test_nirq_interrupt()) {
             unsigned long now = millis();
+
             spi_select_slave();
-            //bool full = false; // is the buffer full after receiving the byte waiting for us?
             const uint8_t status_hi = spi_receive(); // get status word MSB
-            /*const uint8_t status_lo = */ spi_receive(); // get status word LSB
-            //printf("0x%02x 0x%02x\n", status_hi, status_lo);
-            //printf("%lu\n", millis());
+            spi_receive(); // get status word LSB
+
             if ((status_hi & 0x40) != 0) { // FIFO overflow
-                //printf("FIFO overflow\n");
-                red_led_on();
-                //full  = PACKET_BUFFER.add(data_1);
-                //full |= PACKET_BUFFER.add(spi_transfer_byte(0x00));
-                //spi_receive();
+                //red_led_on();
                 in_packet = false;
                 //packet_index = 0;
             }
-            else {
-                red_led_off();
-            }
 
             if ((status_hi & 0x80) != 0) { // FIFO has 8 bits ready
-                //printf("FIFO ready\n");
-                //in_packet = true;
                 const uint8_t data_1 = spi_receive(); // get next byte of data
-                //printf("%02x ", data_1);
-                //full = PACKET_BUFFER.add(data_1);
                 buffer[packet_index] = data_1;
                 ++packet_index;
                 in_packet = true;
                 most_recent_millis = now;
             }
-            else {
-                //green_led_off();
-            }
 
             spi_deselect_slave();
-
-            unsigned long elapsed_since_most_recent = now - most_recent_millis;
-            //printf("%lu\n", elapsed_since_most_recent);
-            if (in_packet && elapsed_since_most_recent > 100) {
-                // Packet over
-                in_packet = false;
-                alpha_rx_reset_fifo_command(8, start_fifo_fill);
-                for (int p = 0; p < packet_index; ++p) {
-                    printf("%02x", buffer[p]);
-                }
-                printf("  [%d]\n", packet_index);
-                packet_index = 0;
-            }
 
             if (in_packet) {
                 green_led_on();
@@ -392,11 +376,20 @@ int main (void)
                 green_led_off();
             }
 
-            if (packet_index == BUFFER_LENGTH) {
-                for (int p = 0; p < packet_index; ++p) {
-                    printf("%02x", buffer[p]);
+            unsigned long elapsed_since_most_recent = now - most_recent_millis;
+            if (in_packet && elapsed_since_most_recent > 100) {
+                // Packet over
+                printf("Packet wait timeout\n");
+
+                if (packet_index < BUFFER_LENGTH) {
+                    alpha_rx_reset_fifo_command(8, start_fifo_fill);
+                    packet_index = 0;
+                    in_packet = false;
                 }
-                printf("  [%d]\n", packet_index);
+            }
+
+            if (packet_index == BUFFER_LENGTH) {
+                parse_packet(packet_index);
                 alpha_rx_reset_fifo_command(8, start_fifo_fill);
                 packet_index = 0;
                 in_packet = false;
@@ -405,34 +398,23 @@ int main (void)
             _delay_us(7);
         //}
     }
-
-//    while (1) {
-//        uint8_t value = 0;
-//        if (test_fifo_interrupt()) {
-//            green_led_on();
-//            disable_spi();
-//            select_fifo();
-//            uint8_t bit_counter = 0;
-//            while (test_fifo_interrupt()) {
-//                _delay_us(2);
-//                sck_lo();
-//                _delay_us(2);
-//                sck_hi();
-//                uint8_t bit = TST(PORTB, PINB4) >> 4;
-//                value <<= 1;
-//                value |= bit;
-//                ++bit_counter;
-//                if (bit_counter == 8) {
-//                    break;
-//                }
-//            }
-//            deselect_fifo();
-//            enable_spi();
-//        }
-//        else {
-//            green_led_off();
-//        }
-//    }
 }
 
 #pragma clang diagnostic pop
+
+void parse_packet(int packet_index) {
+    uint8_t computed_checksum = checksum(&buffer[0], &buffer[30]);
+    uint8_t received_checksum = buffer[30];
+    if (computed_checksum == received_checksum) {
+        red_led_off();
+        for (int p = 0; p < packet_index; ++p) {
+            printf("%02x", buffer[p]);
+        }
+        printf("  [%d]\n", packet_index);
+    } else {
+        printf("Bad checksum computed %02x != %02x received\n", computed_checksum, received_checksum);
+        red_led_on();
+    }
+}
+
+

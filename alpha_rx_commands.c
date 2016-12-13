@@ -108,7 +108,7 @@ const enum LnaGain LNA_GAIN_ORDERED[4] = {
         LNA_GAIN_MINUS_20_DBM};
 
 const char* DRSSI_THESHOLD[8] = {
-        "-130 dBm",
+        "-103 dBm",
         "-97 dBm",
         "-91 dBm",
         "-85 dBm",

@@ -156,6 +156,7 @@ add_avr_executable(
         uart.c
         alpha_rx_commands.c
         spi.c
+        checksum.c
 )
 
 # find_library(M_LIB m)
