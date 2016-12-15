@@ -5,6 +5,9 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 /**
  * Convert a 16-bit decimal float to a IEEE float.
@@ -31,6 +34,8 @@ float decimal_to_float(uint8_t lo, uint8_t hi) {
     return value;
 }
 
+const int8_t LEN_ZERO_AND_POINT = 2;
+
 /**
  * Convert a 16-bit decimal float to a C string.
  *
@@ -54,17 +59,43 @@ void decimal_to_str(uint8_t lo, uint8_t hi, char* s) {
     int16_t mantissa = lo | ((hi & 0x3f) << 8);
     int8_t exponent = hi >> 6;
     char* t = itoa(mantissa, s, 10);
-    if (exponent != 0) {
-        // Copy the null-terminator and the digits comprising the fraction part
-        // of the number one character to the right.
-        while (*t++); // t now points to the character after the null terminator
-        char* u = t - 1;
+
+    if (mantissa == 0) {
+        return;
+    }
+
+    if (exponent == 0) {
+        // We can use the mantissa as-is.
+        return;
+    }
+
+    uint8_t num_mantissa_digits = strlen(t);
+
+    if (exponent < num_mantissa_digits) {
+        const int8_t accommodate = 1;
+        char* target = s + num_mantissa_digits + accommodate;
+        const char* source = s + num_mantissa_digits;
         for (int8_t i = 0; i <= exponent; ++i) {
-            *t = *u;
-            --t;
-            --u;
+            *target = *source;
+            --target;
+            --source;
         }
-        // Insert the decimal point in the gap
-        *t = '.';
+        *target = '.';
+    }
+    else {
+        const int8_t accommodate = LEN_ZERO_AND_POINT + exponent - num_mantissa_digits;
+        char* target = s + num_mantissa_digits + accommodate;
+        const char* source = s + num_mantissa_digits;
+        for (int8_t i = 0; i <= exponent; ++i) {
+            *target = *source;
+            --target;
+            --source;
+        }
+        target = s;
+        *target++ = '0';
+        *target++ = '.';
+        for (int8_t i = 2; i < accommodate; ++i) {
+            *target++ = '0';
+        }
     }
 }
