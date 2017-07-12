@@ -177,7 +177,7 @@ int main (void)
     // USB Serial 0
     uart0_init(UART_BAUD_SELECT(9600, F_CPU));
 
-    printf("\n\nStart!\n");
+            //printf("\n\nStart!\n");
 
     DDRB = 0;
     SET(DDRB, DDB0);  // Red LED - configure bit 0 of PORTB for output
@@ -215,7 +215,7 @@ int main (void)
 //    CLR(PORTB, PORTB1);
 //    while (!TST(PINC, DDC3)) {
 //        uint16_t status = alpha_rx_get_status_command();
-//        printf("status = 0x%hx\n", status);
+//                //printf("status = 0x%hx\n", status);
 //    }
 //    SET(PORTB, PORTB1);
 
@@ -244,11 +244,11 @@ int main (void)
             disable_clock_output);
 
     uint16_t f = alpha_rx_frequency_to_f(band, 434.45f);
-    printf("f = %hu\n", f);
+            //printf("f = %hu\n", f);
     alpha_rx_frequency_setting_command(f);
 
     uint8_t cs_r = alpha_rx_data_rate_to_cs_r(17240);
-    printf("cs_r = %hu\n", cs_r);
+            //printf("cs_r = %hu\n", cs_r);
     alpha_rx_data_rate_command(cs_r);
 
     // RFM01 command #3 CC0E (6. low duty-cycle command)
@@ -367,7 +367,7 @@ int main (void)
             unsigned long elapsed_since_most_recent = now - most_recent_millis;
             if (in_packet && elapsed_since_most_recent > 100) {
                 // Packet over
-                printf("Packet wait timeout\n");
+                        //printf("Packet wait timeout\n");
 
                 if (packet_index < BUFFER_LENGTH) {
                     alpha_rx_reset_fifo_command(8, start_fifo_fill);
@@ -398,20 +398,20 @@ void parse_packet(int packet_index) {
         //display_buffer_hex(packet_index);
         display_buffer_utf8();
     } else {
-        printf("Bad checksum computed %02x != %02x received\n", computed_checksum, received_checksum);
+                //printf("Bad checksum computed %02x != %02x received\n", computed_checksum, received_checksum);
         red_led_on();
     }
 }
 
 void display_buffer_hex(int packet_index) {
     for (int p = 0; p < packet_index; ++p) {
-            printf("%02x ", buffer[p]);
+                    //printf("%02x ", buffer[p]);
         }
-    printf("  [%d]\n", packet_index);
+            //printf("  [%d]\n", packet_index);
 }
 
 void display_buffer_utf8() {
-    printf("id = %.8s", (char*)&buffer[1]); // 1-9
+    printf("id = %.8s", (char*)&buffer[1]);  // 1-9
     char decimal[7];
 
     // Irradiance
@@ -449,4 +449,3 @@ void display_buffer_utf8() {
 
     printf("\n");
 }
-
